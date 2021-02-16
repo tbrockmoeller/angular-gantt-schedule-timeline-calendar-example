@@ -4,10 +4,12 @@ import {
   ElementRef,
   OnInit,
   ViewEncapsulation,
+  OnDestroy,
 } from '@angular/core';
 import GSTC, { Config, GSTCResult } from 'gantt-schedule-timeline-calendar';
 import { Plugin as TimelinePointer } from 'gantt-schedule-timeline-calendar/dist/plugins/timeline-pointer.esm.min.js';
 import { Plugin as Selection } from 'gantt-schedule-timeline-calendar/dist/plugins/selection.esm.min.js';
+import { fromEvent, Observable, Subscription } from 'rxjs';
 
 @Component({
   selector: 'app-root',
@@ -18,9 +20,12 @@ import { Plugin as Selection } from 'gantt-schedule-timeline-calendar/dist/plugi
   ],
   encapsulation: ViewEncapsulation.None,
 })
-export class AppComponent implements OnInit {
+export class AppComponent implements OnInit, OnDestroy {
   @ViewChild('gstcElement', { static: true }) gstcElement: ElementRef;
   gstc: GSTCResult;
+
+  resizeObservable$: Observable<Event>;
+  resizeSubscription$: Subscription;
 
   generateConfig(): Config {
     const iterations = 400;
@@ -33,7 +38,7 @@ export class AppComponent implements OnInit {
       rows[id] = {
         id,
         label: 'Room ' + i,
-        parentId: withParent ? GSTC.api.GSTCID((i - 1).toString()) : undefined,
+        //parentId: withParent ? GSTC.api.GSTCID((i - 1).toString()) : undefined,
         expanded: false,
       };
     }
@@ -97,6 +102,11 @@ export class AppComponent implements OnInit {
       element: this.gstcElement.nativeElement,
       state: GSTC.api.stateFromConfig(this.generateConfig()),
     });
+
+    this.resizeObservable$ = fromEvent(window, 'resize');
+    this.resizeSubscription$ = this.resizeObservable$.subscribe((evt) => {
+      this.gstc.state.update('config.innerHeight', 200);
+    });
   }
 
   updateFirstItem(): void {
@@ -126,5 +136,9 @@ export class AppComponent implements OnInit {
   clearSelection(): void {
     this.gstc.api.plugins.selection.selectCells([]);
     this.gstc.api.plugins.selection.selectItems([]);
+  }
+
+  ngOnDestroy(): void {
+    this.resizeSubscription$.unsubscribe();
   }
 }
